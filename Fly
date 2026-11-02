@@ -1,0 +1,151 @@
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local u1 = Instance.new("BodyVelocity")
+u1.MaxForce = Vector3.new(100000, 100000, 100000)
+u1.Velocity = Vector3.new(0, 0, 0)
+u1.Name = "FlyBodyVelocity"
+
+local u2 = Instance.new("BodyGyro")
+u2.MaxTorque = Vector3.new(100000, 100000, 100000)
+u2.D = 100
+u2.P = 1000
+u2.Name = "FlyBodyGyro"
+
+local script_Flymoving = Instance.new("BoolValue")
+script_Flymoving.Name = "Flymoving"
+script_Flymoving.Value = false
+script_Flymoving.Parent = character
+
+local E = Enum.KeyCode.E
+u1.Parent = character
+u2.Parent = character
+
+local Animation = Instance.new("Animation")
+Animation.AnimationId = "rbxassetid://104782869928557"
+local Animation2 = Instance.new("Animation")
+Animation2.AnimationId = "rbxassetid://87195265835337"
+
+local Sound = Instance.new("Sound", humanoidRootPart)
+Sound.SoundId = "rbxassetid://3308152153"
+Sound.Volume = 0.01
+Sound.Name = "Sound1"
+local u4 = humanoid.Animator:LoadAnimation(Animation)
+local u5 = humanoid.Animator:LoadAnimation(Animation2)
+local Camera = game.Workspace.Camera
+
+local function u7()
+	if humanoid.MoveDirection == Vector3.new(0, 0, 0) then
+		return humanoid.MoveDirection
+	end
+
+	local cameraCF = Camera.CFrame
+	local lookVector = cameraCF.lookVector
+	local flatLook = Vector3.new(lookVector.x, 0, lookVector.z)
+
+	if flatLook.Magnitude < 0.001 then
+		flatLook = Vector3.new(0, 0, -1)
+	end
+
+	local flatCF = CFrame.new(cameraCF.p, cameraCF.p + flatLook)
+	local relative = flatCF:VectorToObjectSpace(humanoid.MoveDirection)
+	local worldSpace = cameraCF * CFrame.new(relative)
+	local v6 = worldSpace.p - cameraCF.p
+
+	if v6.Magnitude < 0.001 then
+		return Vector3.new(0, 0, 0)
+	end
+
+	return v6.Unit
+end
+
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local u8 = false
+
+game:GetService("RunService").RenderStepped:Connect(function()
+	if u8 == true then
+		humanoid:ChangeState(6) 
+		u2.CFrame = Camera.CFrame
+
+		if u7() == Vector3.new(0, 0, 0) then
+			script_Flymoving.Value = false
+		else
+			script_Flymoving.Value = true
+		end
+
+		TweenService:Create(u1, TweenInfo.new(0.3), {
+			Velocity = u7() * 100
+		}):Play()
+	end
+end)
+
+script_Flymoving.Changed:Connect(function(p9)
+	if p9 ~= true then
+		if p9 == false then
+			TweenService:Create(Camera, TweenInfo.new(0.5), {
+				FieldOfView = 70
+			}):Play()
+			u5:Stop()
+			Sound:Stop()
+			u4:Play()
+		end
+		return
+	end
+
+	TweenService:Create(Camera, TweenInfo.new(0.5), {
+		FieldOfView = 100
+	}):Play()
+	u4:Stop()
+	Sound:Play()
+	u5:Play()
+end)
+
+UserInputService.InputBegan:Connect(function(p10, p11)
+	if p11 then
+		return
+	end
+
+	if p10.KeyCode == E then
+		if u8 == false then
+			u8 = true
+
+			if humanoidRootPart then
+				u4:Play(0.1, 1, 1)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, false)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+
+				local running = humanoidRootPart:FindFirstChild("Running")
+				if running then
+					running.Volume = 0
+				end
+
+				humanoid:ChangeState(6)
+				u1.Parent = humanoidRootPart
+				u2.Parent = humanoidRootPart
+			end
+		else
+			u8 = false
+			script_Flymoving.Value = false
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Running, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+
+			local running = humanoidRootPart:FindFirstChild("Running")
+			if running then
+				running.Volume = 0.65
+			end
+
+			humanoid:ChangeState(8)
+			u1.Parent = character
+			u2.Parent = character
+			u4:Stop()
+			u5:Stop()
+		end
+	end
+end)
